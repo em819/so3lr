@@ -37,6 +37,10 @@ from mlff.mdx.hdfdict import DataSetEntry, HDF5Store
 from so3lr.graph import Graph
 from so3lr import So3lrPotential
 
+import pysages
+import pysages.backends as pb
+
+from .so3lr_pysages_interface import create_pysages_interface_fns, update_so3lr_after_pysages, save_pysages_state 
 # Setup logging
 logger = logging.getLogger("SO3LR")
 
@@ -1377,6 +1381,11 @@ def perform_md(
     observables = all_settings.get('observables', [])
     output_atom_indices = all_settings.get('output_atom_indices', None)
 
+    #Enhanced sampling
+    do_enhanced_sampling = all_settings.get('do_enhanced_sampling', False)
+    restart_pysages_save_path = all_settings.get('restart_pysages_save_path')
+    print(f'Perform enhanced sampling? : {do_enhanced_sampling}')
+
     # Handling of restart
     if restart_save_path is not None:
         create_restart = True
@@ -1623,26 +1632,57 @@ def perform_md(
     total_time_for_steps = 0
     first_loop = True
 
+    if do_enhanced_sampling:
+        raw_result = None
+
     while cycle_md < md_cycles:
         old_time = time.time()
-        if lr:
-            new_state, nbrs, nbrs_lr, new_box = jax.block_until_ready(
-                jax.lax.fori_loop(
-                    0,
-                    md_steps,
-                    step_md_fn,
-                    (state, nbrs, nbrs_lr, box)
+        if do_enhanced_sampling:
+            collective_variables = [pysages.colvars.Distance([9,10])]
+            grid = pysages.Grid(lower=2.0, upper=50.0, shape=64)
+            restraints = pysages.CVRestraints(lower=2.0, upper=50.0, kl=0, ku=0.1)
+            method = pysages.methods.ABF(collective_variables, grid, restraints=restraints)
+
+            if lr:
+                generate_context_pysages = create_pysages_interface_fns(lr, state, box, step_md_fn, md_dt, nbrs, nbrs_lr)
+            else:
+                generate_context_pysages = create_pysages_interface_fns(lr, state, box, step_md_fn, md_dt, nbrs)
+
+            if raw_result:
+                raw_result = jax.block_until_ready(
+                    pysages.run(raw_result, generate_context_pysages, md_steps, context_args = {})
                 )
-            )
+            else:
+                raw_result = jax.block_until_ready(
+                    pysages.run(method, generate_context_pysages, md_steps)   
+                )
+
+            if lr:
+                new_state, nbrs, nbrs_lr, new_box = update_so3lr_after_pysages(raw_result, lr, init_fn, rng_key, md_T, neighbor_fn, neighbor_fn_lr)
+            else:
+                new_state, nbrs, nbrs_lr, new_box = update_so3lr_after_pysages(raw_result, lr, init_fn, rng_key, md_T, neighbor_fn, neighbor_fn_lr)
+
+
+
         else:
-            new_state, nbrs, new_box = jax.block_until_ready(
-                jax.lax.fori_loop(
-                    0,
-                    md_steps,
-                    step_md_fn,
-                    (state, nbrs, box)
+            if lr:
+                new_state, nbrs, nbrs_lr, new_box = jax.block_until_ready(
+                    jax.lax.fori_loop(
+                        0,
+                        md_steps,
+                        step_md_fn,
+                        (state, nbrs, nbrs_lr, box)
+                    )
                 )
-            )
+            else:
+                new_state, nbrs, new_box = jax.block_until_ready(
+                    jax.lax.fori_loop(
+                        0,
+                        md_steps,
+                        step_md_fn,
+                        (state, nbrs, box)
+                    )
+                )
 
         time_per_step = (time.time() - old_time) / md_steps
 
@@ -1724,6 +1764,8 @@ def perform_md(
                         restart_save_path,
                         ensemble=ensemble
                     )
+                    if do_enhanced_sampling:
+                        save_pysages_state(raw_result, restart_pysages_save_path)
 
     logger.info('Results saved to: ' + output_file)
     average_time_per_step = total_time_for_steps / (cycle_md - 1)
