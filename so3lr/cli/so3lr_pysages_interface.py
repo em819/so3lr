@@ -35,7 +35,7 @@ def create_pysages_interface_fns(lr, state, box, step_md_fn, md_dt, nbrs, nbrs_l
             box = context_state.extras["box"]
             i = 0 #Set md_step variable to 0, since it's not used inside anyway
 
-            state = step_md_fn(i, state, nbrs, box)
+            state, nbrs, box = step_md_fn(i, state, nbrs, box)
             return pb.JaxMDContextState(state,dict(nbrs=nbrs, box=box))
 
     def generate_context_pysages():
@@ -43,7 +43,7 @@ def create_pysages_interface_fns(lr, state, box, step_md_fn, md_dt, nbrs, nbrs_l
 
     return generate_context_pysages
 
-def update_so3lr_after_pysages(raw_result, lr, init_fn, rng_key, md_T, neighbor_fn, neighbor_fn_lr=None):
+def update_so3lr_after_pysages(raw_result, lr, init_fn, rng_key, md_T, nbrs, nbrs_lr=None):
     def get_new_momenta(snapshot):
         V, M = snapshot.vel_mass
         return (V * M).flatten()
@@ -62,8 +62,8 @@ def update_so3lr_after_pysages(raw_result, lr, init_fn, rng_key, md_T, neighbor_
 
     new_box = final_snapshot.box.H
 
-    nbrs = neighbor_fn.allocate(final_snapshot.positions, box=new_box)
-    nbrs_lr = neighbor_fn_lr.allocate(final_snapshot.positions, box=new_box) if lr else None
+    nbrs = nbrs.update(final_snapshot.positions, neighbor=nbrs.idx, box=new_box)
+    nbrs_lr = nbrs_lr.update(final_snapshot.positions, neighbor=nbrs_lr.idx, box=new_box) if lr else None
 
     #Create so3lr-compatible state after pysages returns via init_fn
     if lr:
@@ -77,6 +77,9 @@ def update_so3lr_after_pysages(raw_result, lr, init_fn, rng_key, md_T, neighbor_
             mass=get_masses(final_snapshot),
             velocities=get_velocities(final_snapshot)
         )
+
+
+        return new_state, nbrs, nbrs_lr, new_box
     else:
         new_state = init_fn(
             rng_key,
@@ -88,7 +91,8 @@ def update_so3lr_after_pysages(raw_result, lr, init_fn, rng_key, md_T, neighbor_
             velocities=get_velocities(final_snapshot)
         )
 
-    return new_state, nbrs, nbrs_lr, new_box
+        return new_state, nbrs, new_box
+
 
 def parse_pysages_input(input_path):
     """ 

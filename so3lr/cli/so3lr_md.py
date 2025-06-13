@@ -1641,7 +1641,8 @@ def perform_md(
             collective_variables = [pysages.colvars.Distance([9,10])]
             grid = pysages.Grid(lower=2.0, upper=50.0, shape=64)
             restraints = pysages.CVRestraints(lower=2.0, upper=50.0, kl=0, ku=0.1)
-            method = pysages.methods.ABF(collective_variables, grid, restraints=restraints)
+            #method = pysages.methods.ABF(collective_variables, grid, restraints=restraints)
+            method = pysages.methods.Metadynamics(collective_variables, height=1.2, sigma=[0.35], stride=1000000, ngaussians=1, deltaT=None, kB=1, grid=grid)
 
             if lr:
                 generate_context_pysages = create_pysages_interface_fns(lr, state, box, step_md_fn, md_dt, nbrs, nbrs_lr)
@@ -1658,9 +1659,9 @@ def perform_md(
                 )
 
             if lr:
-                new_state, nbrs, nbrs_lr, new_box = update_so3lr_after_pysages(raw_result, lr, init_fn, rng_key, md_T, neighbor_fn, neighbor_fn_lr)
+                new_state, nbrs, nbrs_lr, new_box = update_so3lr_after_pysages(raw_result, lr, init_fn, rng_key, md_T, nbrs, nbrs_lr)
             else:
-                new_state, nbrs, nbrs_lr, new_box = update_so3lr_after_pysages(raw_result, lr, init_fn, rng_key, md_T, neighbor_fn, neighbor_fn_lr)
+                new_state, nbrs, new_box = update_so3lr_after_pysages(raw_result, lr, init_fn, rng_key, md_T, nbrs)
 
 
 
