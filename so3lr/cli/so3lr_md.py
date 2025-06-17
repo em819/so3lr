@@ -41,6 +41,7 @@ import pysages
 import pysages.backends as pb
 
 from .so3lr_pysages_interface import create_pysages_interface_fns, update_so3lr_after_pysages, save_pysages_state 
+
 # Setup logging
 logger = logging.getLogger("SO3LR")
 
@@ -1384,6 +1385,7 @@ def perform_md(
     #Enhanced sampling
     do_enhanced_sampling = all_settings.get('do_enhanced_sampling', False)
     restart_pysages_save_path = all_settings.get('restart_pysages_save_path')
+    restart_pysages_load_path = all_settings.get('restart_pysages_load_path')
     print(f'Perform enhanced sampling? : {do_enhanced_sampling}')
 
     # Handling of restart
@@ -1641,8 +1643,8 @@ def perform_md(
             collective_variables = [pysages.colvars.Distance([9,10])]
             grid = pysages.Grid(lower=2.0, upper=50.0, shape=64)
             restraints = pysages.CVRestraints(lower=2.0, upper=50.0, kl=0, ku=0.1)
-            #method = pysages.methods.ABF(collective_variables, grid, restraints=restraints)
-            method = pysages.methods.Metadynamics(collective_variables, height=1.2, sigma=[0.35], stride=1000000, ngaussians=1, deltaT=None, kB=1, grid=grid)
+            method = pysages.methods.ABF(collective_variables, grid, restraints=restraints)
+            #method = pysages.methods.Metadynamics(collective_variables, height=1.2, sigma=[0.35], stride=1000000, ngaussians=1, deltaT=None, kB=1, grid=grid)
 
             if lr:
                 generate_context_pysages = create_pysages_interface_fns(lr, state, box, step_md_fn, md_dt, nbrs, nbrs_lr)
@@ -1659,9 +1661,13 @@ def perform_md(
                 )
 
             if lr:
-                new_state, nbrs, nbrs_lr, new_box = update_so3lr_after_pysages(raw_result, lr, init_fn, rng_key, md_T, nbrs, nbrs_lr)
+                new_state, nbrs, nbrs_lr, new_box = jax.block_until_ready(
+                    update_so3lr_after_pysages(raw_result, lr, init_fn, rng_key, md_T, nbrs, nbrs_lr)
+                )
             else:
-                new_state, nbrs, new_box = update_so3lr_after_pysages(raw_result, lr, init_fn, rng_key, md_T, nbrs)
+                new_state, nbrs, new_box = jax.block_until_ready(
+                    update_so3lr_after_pysages(raw_result, lr, init_fn, rng_key, md_T, nbrs)
+                )
 
 
 

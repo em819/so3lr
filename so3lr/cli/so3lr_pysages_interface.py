@@ -8,6 +8,9 @@ and collective variables
 import pysages
 import pysages.backends as pb
 import pysages.utils as pu
+import jax_md.simulate
+import jax_md.quantity
+from jax import jit
 
 def create_pysages_interface_fns(lr, state, box, step_md_fn, md_dt, nbrs, nbrs_lr=None):
     if lr:
@@ -26,7 +29,6 @@ def create_pysages_interface_fns(lr, state, box, step_md_fn, md_dt, nbrs, nbrs_l
 
             nbrs_lr = context_state.extras["nbrs_lr"]
             state, nbrs, nbrs_lr, box= step_md_fn(i, (state, nbrs, nbrs_lr, box))
-            #print(f'Forces : {state.force}')
             return pb.JaxMDContextState(state,dict(nbrs=nbrs, nbrs_lr=nbrs_lr, box=box))
     else:
         def step_fn_pysages(context_state):
@@ -43,6 +45,35 @@ def create_pysages_interface_fns(lr, state, box, step_md_fn, md_dt, nbrs, nbrs_l
 
     return generate_context_pysages
 
+@jit
+def re_init_so3lr_state(chain_pos, chain_mom, chain_mass, chain_tau, chain_ekin, chain_dof, pos, velocities, forces, mass):
+    new_state = jax_md.simulate.NVTNoseHooverState(
+            position=pos,
+            momentum=None,
+            force=forces,
+            mass=mass,
+            chain=None)
+
+    new_state = jax_md.simulate.canonicalize_mass(new_state)
+
+    new_state = new_state.set(momentum=new_state.mass * velocities)
+
+    #KE = jax_md.simulate.kinetic_energy(new_state)
+    dof = jax_md.quantity.count_dof(pos)
+    new_thermostat = jax_md.simulate.NoseHooverChain(
+                position=chain_pos,
+                momentum=chain_mom,
+                mass=chain_mass,
+                tau=chain_tau,
+                kinetic_energy=chain_ekin,
+                degrees_of_freedom=dof
+            )
+
+
+    new_state = new_state.set(chain=new_thermostat)
+    return new_state
+
+
 def update_so3lr_after_pysages(raw_result, lr, init_fn, rng_key, md_T, nbrs, nbrs_lr=None):
     def get_new_momenta(snapshot):
         V, M = snapshot.vel_mass
@@ -56,7 +87,6 @@ def update_so3lr_after_pysages(raw_result, lr, init_fn, rng_key, md_T, nbrs, nbr
         V, _ = snapshot.vel_mass
         return V
 
-    print(f'Number of snapshots {len(raw_result.snapshots)}')
 
     final_snapshot = raw_result.snapshots[-1]
 
@@ -66,32 +96,20 @@ def update_so3lr_after_pysages(raw_result, lr, init_fn, rng_key, md_T, nbrs, nbr
     nbrs_lr = nbrs_lr.update(final_snapshot.positions, neighbor=nbrs_lr.idx, box=new_box) if lr else None
 
     #Create so3lr-compatible state after pysages returns via init_fn
-    if lr:
-        new_state = init_fn(
-            rng_key,
-            R=final_snapshot.positions,
-            box=new_box,
-            neighbor=nbrs.idx,
-            neighbor_lr=nbrs_lr.idx,
-            kT=md_T,
-            mass=get_masses(final_snapshot),
-            velocities=get_velocities(final_snapshot)
-        )
+    new_state = re_init_so3lr_state(final_snapshot.chain_positions, 
+            final_snapshot.chain_momenta,
+            final_snapshot.chain_mass, 
+            final_snapshot.chain_tau, 
+            final_snapshot.chain_ekin, 
+            final_snapshot.chain_dof, 
+            final_snapshot.positions, 
+            get_velocities(final_snapshot), 
+            final_snapshot.forces, 
+            get_masses(final_snapshot)
+    )
 
+    return new_state, nbrs, nbrs_lr, new_box
 
-        return new_state, nbrs, nbrs_lr, new_box
-    else:
-        new_state = init_fn(
-            rng_key,
-            R=final_snapshot.positions,
-            box=new_box,
-            neighbor=nbrs.idx,
-            kT=md_T,
-            mass=get_masses(final_snapshot),
-            velocities=get_velocities(final_snapshot)
-        )
-
-        return new_state, nbrs, new_box
 
 
 def parse_pysages_input(input_path):
@@ -123,9 +141,36 @@ def parse_pysages_input(input_path):
                 if any(line_vals[1] == x for x in ['distance']): 
                 #Expecting: distance [0,1,2,3,...] [10,11,12,13,...]
                     cv_dict = {'type': 'distance', 'grp1': line_vals[2], 'grp2' : line_vals[3]}
-                    settings_dict['cv'].append(cv_dict)
-            
+                elif line_vals[1] == 'angle':
+                #Expecting: angle [2,3,4]
+                    cv_dict = {'type': 'angle', 'indices': line_vals[2]}
+                elif line_vals[1] == 'dihedral':
+                #Expecting: dihedral [4,5,6,7]
+                    cv_dict = {'type': 'dihedral', 'indices': line_vals[2]}
+                elif line_vals[1] == 'gyrrad':
+                #Expecting: gyrrad [2,4,6,7,8,9,...]
+                    cv_dict = {'type': 'gyrrad', 'indices': line_vals[2]}
+                elif line_vals[1] == 'princmom':
+                #Expecting: princmom [2,3,4,5,6,...] 1
+                    cv_dict = {'type': 'princmom', 'indices': line_vals[2], 'axis' : line_vals[3]}
+                elif line_vals[1] == 'asphericity':
+                #Expecting: asphericity [1,2,3,4,...]
+                    cv_dict = {'type': 'asphericity', 'indices': line_vals[2]}
+                elif line_vals[1] == 'acylindricity':
+                #Expecting: acylindricity [1,2,3,4,...]
+                    cv_dict = {'type': 'acylindricity', 'indices': line_vals[2]}
+                elif line_vals[1] == 'shapeanisotropy':
+                    #Expecting: shapeanisotropy [1,2,3,4,...]
+                    cv_dict = {'type': 'shapeanisotropy', 'indices': line_vals[2]}
+                settings_dict['cv'].append(cv_dict)
+
+           
     return settings_dict
+
+def get_pysages_method(settings_dict):
+    """Process the parsed settings and return the enhanced sampling method object"""
+    if settings_dict['method'] == 'ABF':
+        pass
 
 
 def create_pysages_runner(method, generate_context_fn, md_steps):
