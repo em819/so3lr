@@ -128,10 +128,10 @@ def parse_pysages_input(input_path):
                 settings_dict['method'] = line.split()[1]
             elif line.startswith('method_args'):
                 line_vals = line.split()
-                if method_args not in settings_dict:
+                if 'method_args' not in settings_dict:
                     settings_dict['method_args'] = {}
                 
-                settings_dict['method_args'][linevals[1]] = linevals[2]
+                settings_dict['method_args'][line_vals[1]] = line_vals[2]
 
             elif line.startswith('cv'):
                 line_vals = line.split()
@@ -164,7 +164,9 @@ def parse_pysages_input(input_path):
                     cv_dict = {'type': 'shapeanisotropy', 'indices': line_vals[2]}
                 settings_dict['cv'].append(cv_dict)
 
-           
+
+
+    print(f'Parsed settings for PySAGES : {settings_dict}')       
     return settings_dict
 
 def get_pysages_method(settings_dict):
@@ -186,4 +188,9 @@ def save_pysages_state(pysages_result, path_to_save):
     Result object after a pysages run
     """
     
-    pu.save(pysages_result, path_to_save)
+    #pu.save(pysages_result, path_to_save)
+    pysages.serialization.save(pysages_result, path_to_save)
+
+def load_pysages_state(path_to_load):
+    return pysages.serialization.load(path_to_load)
+

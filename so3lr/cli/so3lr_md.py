@@ -40,7 +40,7 @@ from so3lr import So3lrPotential
 import pysages
 import pysages.backends as pb
 
-from .so3lr_pysages_interface import create_pysages_interface_fns, update_so3lr_after_pysages, save_pysages_state 
+from .so3lr_pysages_interface import create_pysages_interface_fns, update_so3lr_after_pysages, save_pysages_state, parse_pysages_input 
 
 # Setup logging
 logger = logging.getLogger("SO3LR")
@@ -1386,7 +1386,12 @@ def perform_md(
     do_enhanced_sampling = all_settings.get('do_enhanced_sampling', False)
     restart_pysages_save_path = all_settings.get('restart_pysages_save_path')
     restart_pysages_load_path = all_settings.get('restart_pysages_load_path')
-    print(f'Perform enhanced sampling? : {do_enhanced_sampling}')
+    if do_enhanced_sampling and restart_pysages_load_path is not None:
+        restart_pysages = True
+    else:
+        restart_pysages = False
+
+    print(f'Perform enhanced sampling? : {do_enhanced_sampling} (restart={restart_pysages})')
 
     # Handling of restart
     if restart_save_path is not None:
@@ -1465,6 +1470,10 @@ def perform_md(
             restart = False
         except Exception as e:
             raise RuntimeError(f"Failed to load restart state from {restart_load_path}: {str(e)}")
+
+        if restart_pysages:
+            restart_data_pysages = load_pysages_state(restart_pysages_load_path)
+            #TODO: Handle potential change of ensemble
         
     patched_potential_kwargs={}
     if "partial_charges" in observables:
@@ -1635,7 +1644,13 @@ def perform_md(
     first_loop = True
 
     if do_enhanced_sampling:
-        raw_result = None
+        #Read pysages-settings
+        #set_dict = parse_pysages_input('./pysages_input.txt') 
+        if first_loop and not restart_pysages:
+            #If this is a fresh so3lr run
+            pysages_result = None
+        else:
+            pysages_result = restart_data_pysages 
 
     while cycle_md < md_cycles:
         old_time = time.time()
@@ -1651,22 +1666,22 @@ def perform_md(
             else:
                 generate_context_pysages = create_pysages_interface_fns(lr, state, box, step_md_fn, md_dt, nbrs)
 
-            if raw_result:
-                raw_result = jax.block_until_ready(
-                    pysages.run(raw_result, generate_context_pysages, md_steps, context_args = {})
+            if pysages_result:
+                pysages_result = jax.block_until_ready(
+                    pysages.run(pysages_result, generate_context_pysages, md_steps, context_args = {})
                 )
             else:
-                raw_result = jax.block_until_ready(
+                pysages_result = jax.block_until_ready(
                     pysages.run(method, generate_context_pysages, md_steps)   
                 )
 
             if lr:
                 new_state, nbrs, nbrs_lr, new_box = jax.block_until_ready(
-                    update_so3lr_after_pysages(raw_result, lr, init_fn, rng_key, md_T, nbrs, nbrs_lr)
+                    update_so3lr_after_pysages(pysages_result, lr, init_fn, rng_key, md_T, nbrs, nbrs_lr)
                 )
             else:
                 new_state, nbrs, new_box = jax.block_until_ready(
-                    update_so3lr_after_pysages(raw_result, lr, init_fn, rng_key, md_T, nbrs)
+                    update_so3lr_after_pysages(pysages_result, lr, init_fn, rng_key, md_T, nbrs)
                 )
 
 
@@ -1772,7 +1787,7 @@ def perform_md(
                         ensemble=ensemble
                     )
                     if do_enhanced_sampling:
-                        save_pysages_state(raw_result, restart_pysages_save_path)
+                        save_pysages_state(pysages_result, restart_pysages_save_path)
 
     logger.info('Results saved to: ' + output_file)
     average_time_per_step = total_time_for_steps / (cycle_md - 1)
