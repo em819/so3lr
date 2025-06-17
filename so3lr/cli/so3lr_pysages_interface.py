@@ -96,12 +96,13 @@ def update_so3lr_after_pysages(raw_result, lr, init_fn, rng_key, md_T, nbrs, nbr
     nbrs_lr = nbrs_lr.update(final_snapshot.positions, neighbor=nbrs_lr.idx, box=new_box) if lr else None
 
     #Create so3lr-compatible state after pysages returns via init_fn
-    new_state = re_init_so3lr_state(final_snapshot.chain_positions, 
-            final_snapshot.chain_momenta,
-            final_snapshot.chain_mass, 
-            final_snapshot.chain_tau, 
-            final_snapshot.chain_ekin, 
-            final_snapshot.chain_dof, 
+    new_state = re_init_so3lr_state(
+            final_snapshot.chain_data["position"], 
+            final_snapshot.chain_data["momentum"],
+            final_snapshot.chain_data["mass"], 
+            final_snapshot.chain_data["tau"], 
+            final_snapshot.chain_data["kinetic_energy"], 
+            final_snapshot.chain_data["degrees_of_freedom"], 
             final_snapshot.positions, 
             get_velocities(final_snapshot), 
             final_snapshot.forces, 
