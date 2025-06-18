@@ -40,7 +40,7 @@ from so3lr import So3lrPotential
 import pysages
 import pysages.backends as pb
 
-from .so3lr_pysages_interface import create_pysages_interface_fns, update_so3lr_after_pysages, save_pysages_state, parse_pysages_input 
+from .so3lr_pysages_interface import create_pysages_interface_fns, update_so3lr_after_pysages, save_pysages_state, parse_pysages_input, get_pysages_method 
 
 # Setup logging
 logger = logging.getLogger("SO3LR")
@@ -1645,7 +1645,9 @@ def perform_md(
 
     if do_enhanced_sampling:
         #Read pysages-settings
-        #set_dict = parse_pysages_input('./pysages_input.txt') 
+        set_dict = parse_pysages_input('./pysages_input.txt')
+        print(f'Parsed pysages settings: {set_dict}')
+        method = get_pysages_method(set_dict) 
         if first_loop and not restart_pysages:
             #If this is a fresh so3lr run
             pysages_result = None
@@ -1655,10 +1657,10 @@ def perform_md(
     while cycle_md < md_cycles:
         old_time = time.time()
         if do_enhanced_sampling:
-            collective_variables = [pysages.colvars.Distance([9,10])]
-            grid = pysages.Grid(lower=2.0, upper=50.0, shape=64)
-            restraints = pysages.CVRestraints(lower=2.0, upper=50.0, kl=0, ku=0.1)
-            method = pysages.methods.ABF(collective_variables, grid, restraints=restraints)
+            #collective_variables = [pysages.colvars.Distance([9,10])]
+            #grid = pysages.Grid(lower=2.0, upper=50.0, shape=64)
+            #restraints = pysages.CVRestraints(lower=2.0, upper=50.0, kl=0, ku=0.1)
+            #method = pysages.methods.ABF(collective_variables, grid, restraints=restraints)
             #method = pysages.methods.Metadynamics(collective_variables, height=1.2, sigma=[0.35], stride=1000000, ngaussians=1, deltaT=None, kB=1, grid=grid)
 
             if lr:
