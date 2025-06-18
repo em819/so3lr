@@ -15,8 +15,14 @@ from jax import jit
 import pysages.colvars
 import pysages.methods
 import json
+import numpy as np
+import jax.numpy as jnp
 
 def create_pysages_interface_fns(lr, state, box, step_md_fn, md_dt, nbrs, nbrs_lr=None):
+    #print(f'Box : {box} (shape : {box.shape}, type={type(box)})')
+    if np.all(box == 0) or box is None:
+        box = jnp.array([0.0, 0.0, 0.0])
+        #state.box = box
     if lr:
         def init_fn_pysages():
             return pb.JaxMDContextState(state,dict(nbrs=nbrs, nbrs_lr=nbrs_lr, box=box))
@@ -238,7 +244,7 @@ def process_cv(cv_dict):
 
     name_lower = name.lower()
     if name_lower == 'distance':
-        print(f'Grp 1: {tuple(arguments['grp1'])}, Grp 2: {tuple(arguments['grp2'])}')
+        #print(f'Grp 1: {tuple(arguments['grp1'])}, Grp 2: {tuple(arguments['grp2'])}')
         return pysages.colvars.Distance(indices=[tuple(arguments['grp1']), tuple(arguments['grp2'])])
     elif name_lower == 'angle':
         return pysages.colvars.Angle(indices=arguments['indices'])
@@ -260,7 +266,7 @@ def process_grid(cv_settings):
     grid_maxs = [cv['grid_max'] for cv in cv_settings]
     grid_strides = [cv['grid_stride'] for cv in cv_settings]
     periodic = [cv['periodic'] for cv in cv_settings]
-    print(f'Grid shape : {tuple(grid_strides)}')
+    #print(f'Grid shape : {tuple(grid_strides)}')
     return pysages.Grid(lower=tuple(grid_mins), upper=tuple(grid_maxs), shape=tuple(grid_strides), periodic=all(periodic))
 
 
@@ -273,7 +279,7 @@ def get_pysages_method(settings_dict):
     grid = process_grid(settings_dict['cv'])
 
     units = jax_md.units.metal_unit_system()
-    print(units)
+    #print(units)
 
     #Assemble method
     if settings_dict['method'].lower() == 'abf':
