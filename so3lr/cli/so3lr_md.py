@@ -1645,7 +1645,7 @@ def perform_md(
 
     if do_enhanced_sampling:
         #Read pysages-settings
-        set_dict = parse_pysages_input('./pysages_input.txt')
+        set_dict = parse_pysages_input('./pysages_input.yaml')
         print(f'Parsed pysages settings: {set_dict}', flush=True)
         method = get_pysages_method(set_dict) 
         if first_loop and not restart_pysages:

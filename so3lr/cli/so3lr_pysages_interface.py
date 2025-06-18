@@ -17,6 +17,7 @@ import pysages.methods
 import json
 import numpy as np
 import jax.numpy as jnp
+import yaml
 
 def create_pysages_interface_fns(lr, state, box, step_md_fn, md_dt, nbrs, nbrs_lr=None):
     #print(f'Box : {box} (shape : {box.shape}, type={type(box)})')
@@ -129,109 +130,110 @@ def parse_pysages_input(input_path):
     """
 
     with open(input_path, 'r') as in_file:
-        settings_dict = {}
-        for line in in_file:
-            line = line.lower().strip()
+        settings_dict = yaml.load(in_file, Loader=yaml.SafeLoader)
+        #settings_dict = {}
+        #for line in in_file:
+        #    line = line.lower().strip()
 
-            if line.startswith('#'):
-                continue
-            elif line.startswith('method '):
-                settings_dict['method'] = line.split()[1]
-            elif line.startswith('method_args'):
-                line_vals = line.split()
-                if 'method_args' not in settings_dict:
-                    settings_dict['method_args'] = {}
-                
-                settings_dict['method_args'][line_vals[1]] = line_vals[2]
+        #    if line.startswith('#'):
+        #        continue
+        #    elif line.startswith('method '):
+        #        settings_dict['method'] = line.split()[1]
+        #    elif line.startswith('method_args'):
+        #        line_vals = line.split()
+        #        if 'method_args' not in settings_dict:
+        #            settings_dict['method_args'] = {}
+        #        
+        #        settings_dict['method_args'][line_vals[1]] = line_vals[2]
 
-            elif line.startswith('cv'):
-                line_vals = line.split()
-                if 'cv' not in settings_dict:
-                    settings_dict['cv'] = []
+        #    elif line.startswith('cv'):
+        #        line_vals = line.split()
+        #        if 'cv' not in settings_dict:
+        #            settings_dict['cv'] = []
 
-                if any(line_vals[1] == x for x in ['distance']): 
-                #Expecting: distance [0,1,2,3,...] [10,11,12,13,...] 0.0 50.0 64
-                    cv_dict = {
-                            'type': 'distance', 
-                            'grp1': json.loads(line_vals[2]), 
-                            'grp2' : json.loads(line_vals[3]),
-                            'grid_min' : float(line_vals[4]),
-                            'grid_max' : float(line_vals[5]),
-                            'grid_stride' : int(line_vals[6]),
-                            'periodic' : False
-                            }
-                elif line_vals[1] == 'angle':
-                #Expecting: angle [2,3,4]
-                    cv_dict = {
-                            'type': 'angle', 
-                            'indices': json.loads(line_vals[2]),
-                            'grid_min' : line_vals[3],
-                            'grid_max' : line_vals[4],
-                            'grid_stride' : line_vals[5],
-                            'periodic' : True
-                            }
-                elif line_vals[1] == 'dihedral':
-                #Expecting: dihedral [4,5,6,7]
-                    cv_dict = {
-                            'type': 'dihedral', 
-                            'indices': json.loads(line_vals[2]),
-                            'grid_min' : line_vals[3],
-                            'grid_max' : line_vals[4],
-                            'grid_stride' : line_vals[5],
-                            'periodic' : True
-                            }
-                elif line_vals[1] == 'gyrrad':
-                #Expecting: gyrrad [2,4,6,7,8,9,...]
-                    cv_dict = {
-                            'type': 'gyrrad', 
-                            'indices': json.loads(line_vals[2]),
-                            'grid_min' : line_vals[3],
-                            'grid_max' : line_vals[4],
-                            'grid_stride' : line_vals[5],
-                            'periodic' : False
-                            }
-                elif line_vals[1] == 'princmom':
-                #Expecting: princmom [2,3,4,5,6,...] 1
-                    cv_dict = {
-                            'type': 'princmom', 
-                            'indices': json.loads(line_vals[2]), 
-                            'axis' : line_vals[3],
-                            'grid_min' : line_vals[4],
-                            'grid_max' : line_vals[5],
-                            'grid_stride' : line_vals[6],
-                            'periodic' : False
-                            }
-                elif line_vals[1] == 'asphericity':
-                #Expecting: asphericity [1,2,3,4,...]
-                    cv_dict = {
-                            'type': 'asphericity', 
-                            'indices': json.loads(line_vals[2]),
-                            'grid_min' : line_vals[3],
-                            'grid_max' : line_vals[4],
-                            'grid_stride' : line_vals[5],
-                            'periodic' : False
-                            }
-                elif line_vals[1] == 'acylindricity':
-                #Expecting: acylindricity [1,2,3,4,...]
-                    cv_dict = {
-                            'type': 'acylindricity', 
-                            'indices': json.loads(line_vals[2]),
-                            'grid_min' : line_vals[3],
-                            'grid_max' : line_vals[4],
-                            'grid_stride' : line_vals[5],
-                            'periodic' : False
-                            }
-                elif line_vals[1] == 'shapeanisotropy':
-                    #Expecting: shapeanisotropy [1,2,3,4,...]
-                    cv_dict = {
-                            'type': 'shapeanisotropy', 
-                            'indices': json.loads(line_vals[2]),
-                            'grid_min' : line_vals[3],
-                            'grid_max' : line_vals[4],
-                            'grid_stride' : line_vals[5],
-                            'periodic' : False
-                            }
-                settings_dict['cv'].append(cv_dict)
+        #        if any(line_vals[1] == x for x in ['distance']): 
+        #        #Expecting: distance [0,1,2,3,...] [10,11,12,13,...] 0.0 50.0 64
+        #            cv_dict = {
+        #                    'type': 'distance', 
+        #                    'grp1': json.loads(line_vals[2]), 
+        #                    'grp2' : json.loads(line_vals[3]),
+        #                    'grid_min' : float(line_vals[4]),
+        #                    'grid_max' : float(line_vals[5]),
+        #                    'grid_stride' : int(line_vals[6]),
+        #                    'periodic' : False
+        #                    }
+        #        elif line_vals[1] == 'angle':
+        #        #Expecting: angle [2,3,4]
+        #            cv_dict = {
+        #                    'type': 'angle', 
+        #                    'indices': json.loads(line_vals[2]),
+        #                    'grid_min' : line_vals[3],
+        #                    'grid_max' : line_vals[4],
+        #                    'grid_stride' : line_vals[5],
+        #                    'periodic' : True
+        #                    }
+        #        elif line_vals[1] == 'dihedral':
+        #        #Expecting: dihedral [4,5,6,7]
+        #            cv_dict = {
+        #                    'type': 'dihedral', 
+        #                    'indices': json.loads(line_vals[2]),
+        #                    'grid_min' : line_vals[3],
+        #                    'grid_max' : line_vals[4],
+        #                    'grid_stride' : line_vals[5],
+        #                    'periodic' : True
+        #                    }
+        #        elif line_vals[1] == 'gyrrad':
+        #        #Expecting: gyrrad [2,4,6,7,8,9,...]
+        #            cv_dict = {
+        #                    'type': 'gyrrad', 
+        #                    'indices': json.loads(line_vals[2]),
+        #                    'grid_min' : line_vals[3],
+        #                    'grid_max' : line_vals[4],
+        #                    'grid_stride' : line_vals[5],
+        #                    'periodic' : False
+        #                    }
+        #        elif line_vals[1] == 'princmom':
+        #        #Expecting: princmom [2,3,4,5,6,...] 1
+        #            cv_dict = {
+        #                    'type': 'princmom', 
+        #                    'indices': json.loads(line_vals[2]), 
+        #                    'axis' : line_vals[3],
+        #                    'grid_min' : line_vals[4],
+        #                    'grid_max' : line_vals[5],
+        #                    'grid_stride' : line_vals[6],
+        #                    'periodic' : False
+        #                    }
+        #        elif line_vals[1] == 'asphericity':
+        #        #Expecting: asphericity [1,2,3,4,...]
+        #            cv_dict = {
+        #                    'type': 'asphericity', 
+        #                    'indices': json.loads(line_vals[2]),
+        #                    'grid_min' : line_vals[3],
+        #                    'grid_max' : line_vals[4],
+        #                    'grid_stride' : line_vals[5],
+        #                    'periodic' : False
+        #                    }
+        #        elif line_vals[1] == 'acylindricity':
+        #        #Expecting: acylindricity [1,2,3,4,...]
+        #            cv_dict = {
+        #                    'type': 'acylindricity', 
+        #                    'indices': json.loads(line_vals[2]),
+        #                    'grid_min' : line_vals[3],
+        #                    'grid_max' : line_vals[4],
+        #                    'grid_stride' : line_vals[5],
+        #                    'periodic' : False
+        #                    }
+        #        elif line_vals[1] == 'shapeanisotropy':
+        #            #Expecting: shapeanisotropy [1,2,3,4,...]
+        #            cv_dict = {
+        #                    'type': 'shapeanisotropy', 
+        #                    'indices': json.loads(line_vals[2]),
+        #                    'grid_min' : line_vals[3],
+        #                    'grid_max' : line_vals[4],
+        #                    'grid_stride' : line_vals[5],
+        #                    'periodic' : False
+        #                    }
+        #        settings_dict['cv'].append(cv_dict)
 
 
 
@@ -281,9 +283,15 @@ def get_pysages_method(settings_dict):
     units = jax_md.units.metal_unit_system()
     #print(units)
 
+    if settings_dict['restraints']:
+        restraints_dict = settings_dict['restraints']
+        restraints = pysages.CVRestraints(lower=restraints_dict['lower'], upper=restraints_dict['upper'], kl=0, ku=0.1)
+    else:
+        restraints=None
+
     #Assemble method
     if settings_dict['method'].lower() == 'abf':
-        return pysages.methods.ABF(cvs, grid)
+        return pysages.methods.ABF(cvs, grid, restraints=restraints)
     elif settings_dict['method'].lower() == 'metad':
         return pysages.methods.Metadynamics(
                 cvs, 
@@ -293,7 +301,8 @@ def get_pysages_method(settings_dict):
                 settings_dict['method_args']['ngauss'], 
                 deltaT=settings_dict['method_args']['deltaT'], 
                 kB=units['temperature'], 
-                grid=grid)
+                grid=grid,
+                restraints=restraints)
     else:
         #TODO implement the other methods
         pass
