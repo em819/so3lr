@@ -210,6 +210,20 @@ def handle_box(
         inv_box = 1/box
         positions = raw_transform(inv_box, positions)
 
+    elif shift_displacement == 'periodic_cart':
+        print(f'Enforcing cartesian coordinates with PBC', flush=True)
+        if cell is None:
+            raise ValueError('Cell must be defined for periodic boundary conditions.')
+
+        box = jnp.array(np.diag(np.array(cell)))
+        fractional_coordinates = False
+
+        # Create displacement and shift functions for periodic boundary conditions
+        displacement, shift = jax_md.space.periodic_general(
+            box=box,
+            fractional_coordinates=fractional_coordinates
+        )
+
     elif shift_displacement == 'free':
         # Create displacement and shift functions for free boundary conditions
         displacement, shift = jax_md.space.free()
@@ -1386,6 +1400,10 @@ def perform_md(
     do_enhanced_sampling = all_settings.get('do_enhanced_sampling', False)
     restart_pysages_save_path = all_settings.get('restart_pysages_save_path')
     restart_pysages_load_path = all_settings.get('restart_pysages_load_path')
+
+    #Hack to enforce cartesian (instead of fractional) coordinates under PBC
+    enforce_cartesian_coordinates = all_settings.get('enforce_cartesian_coordinates', False)
+
     if do_enhanced_sampling and restart_pysages_load_path is not None:
         restart_pysages = True
     else:
@@ -1421,7 +1439,11 @@ def perform_md(
             'Cell must be defined for NPT simulations. The input geometry does not contain cell information.')
 
     if cell is not None:
-        shift_displacement = 'periodic'
+        if enforce_cartesian_coordinates:
+            shift_displacement = 'periodic_cart'
+        else:
+            shift_displacement = 'periodic'
+
         initial_geometry.wrap()
     else:
         shift_displacement = 'free'
