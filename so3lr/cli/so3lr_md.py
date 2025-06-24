@@ -389,6 +389,7 @@ def write_to_extxyz(
     boxes: Union[float, jnp.ndarray, List, None],
     momenta: List,
     positions: List,
+    fractional_coordinates: bool,
     obs_dict: MutableMapping[str, list] = {},
     indices: Optional[List[int]] = None,
 ) -> Tuple[List[jnp.ndarray], List[jnp.ndarray], List[jnp.ndarray], MutableMapping[str, list]]:
@@ -433,26 +434,29 @@ def write_to_extxyz(
         for i in range(len(positions)):
             atoms_copy = atoms.copy()
 
-            # TODO: replace with raw_transform(box, positions)
-            # Handle different box types and set positions accordingly
-            if isinstance(boxes, float):
-                if boxes == 0:
-                    atoms_copy.set_positions(positions[i])
+            if fractional_coordinates:
+                # TODO: replace with raw_transform(box, positions)
+                # Handle different box types and set positions accordingly
+                if isinstance(boxes, float):
+                    if boxes == 0:
+                        atoms_copy.set_positions(positions[i])
+                    else:
+                        atoms_copy.set_cell(boxes)
+                        atoms_copy.set_positions(positions[i] * boxes)
+                elif isinstance(boxes, (jnp.ndarray, np.ndarray)):
+                    if np.any(boxes == 0):
+                        atoms_copy.set_positions(positions[i])
+                    else:
+                        atoms_copy.set_cell(boxes)
+                        atoms_copy.set_positions(positions[i] * boxes)
+                elif isinstance(boxes, list):
+                    if np.any(boxes[0] == 0):
+                        atoms_copy.set_positions(positions[i])
+                    else:
+                        atoms_copy.set_cell(boxes[i])
+                        atoms_copy.set_positions(positions[i] * boxes[i])
                 else:
-                    atoms_copy.set_cell(boxes)
-                    atoms_copy.set_positions(positions[i] * boxes)
-            elif isinstance(boxes, (jnp.ndarray, np.ndarray)):
-                if np.any(boxes == 0):
                     atoms_copy.set_positions(positions[i])
-                else:
-                    atoms_copy.set_cell(boxes)
-                    atoms_copy.set_positions(positions[i] * boxes)
-            elif isinstance(boxes, list):
-                if np.any(boxes[0] == 0):
-                    atoms_copy.set_positions(positions[i])
-                else:
-                    atoms_copy.set_cell(boxes[i])
-                    atoms_copy.set_positions(positions[i] * boxes[i])
             else:
                 atoms_copy.set_positions(positions[i])
 
@@ -1798,6 +1802,7 @@ def perform_md(
                         boxes,
                         momenta,
                         positions,
+                        fractional_coordinates,
                         obs_dict,
                         output_atom_indices
                     )
@@ -2134,11 +2139,11 @@ def perform_min(
     # Save optimization result and return optimized geometry
     positions = minimization_trajectory
     if output_format == 'extxyz':
-        write_to_extxyz(output_file, initial_geometry, boxes=box, momenta=None, positions=positions)
+        write_to_extxyz(output_file, initial_geometry, boxes=box, momenta=None, positions=positions, fractional_coordinates=fractional_coordinates)
     elif output_format == 'hdf5':
         logger.warn(f"Output format is 'hdf5', changing output file extension to 'xyz' for minimization.") #TODO: Saving in xyz for simplicity for now, add hdf5 support
         output_file = output_file.rsplit('.', 1)[0] + '_opt.xyz'
-        write_to_extxyz(output_file, initial_geometry, boxes=box, momenta=None, positions=positions)
+        write_to_extxyz(output_file, initial_geometry, boxes=box, momenta=None, positions=positions, fractional_coordinates=fractional_coordinates)
         # write_to_hdf5(hdf5_store, momenta=None, positions=positions, boxes=box)
     
     logger.info(f"Optimization trajectory with {len(minimization_trajectory)} frames saved to {output_file}")
