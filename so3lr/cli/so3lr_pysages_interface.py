@@ -283,7 +283,7 @@ def get_pysages_method(settings_dict):
     units = jax_md.units.metal_unit_system()
     #print(units)
 
-    if settings_dict['restraints']:
+    if 'restraints' in settings_dict:
         restraints_dict = settings_dict['restraints']
         restraints = pysages.CVRestraints(lower=restraints_dict['lower'], upper=restraints_dict['upper'], kl=0, ku=0.1)
     else:
