@@ -40,7 +40,7 @@ from so3lr import So3lrPotential
 import pysages
 import pysages.backends as pb
 
-from .so3lr_pysages_interface import create_pysages_interface_fns, update_so3lr_after_pysages, save_pysages_state, parse_pysages_input, get_pysages_method 
+from .so3lr_pysages_interface import create_pysages_interface_fns, update_so3lr_after_pysages, save_pysages_state, parse_pysages_input, get_pysages_method, load_pysages_state 
 
 # Setup logging
 logger = logging.getLogger("SO3LR")
@@ -2293,7 +2293,9 @@ def load_state(
     else:
         raise NotImplementedError('Only NVE, NVT and NPT ensembles are supported')
 
-    box = None if loaded_state['box'].item() is None else loaded_state['box']
+
+    #box = None if loaded_state['box'].item() is None else loaded_state['box']
+    box = None if 'box' not in loaded_state else loaded_state['box']
     cycle = loaded_state['step']
 
     return state, box, cycle
