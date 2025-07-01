@@ -2241,18 +2241,18 @@ def load_state(
 
     if ensemble.lower() == 'nve':
         state = jax_md.simulate.NVEState(
-            position=loaded_state['position'],
-            momentum=loaded_state['momentum'],
-            force=loaded_state['force'],
-            mass=loaded_state['mass']
+            position=jnp.array(loaded_state['position']),
+            momentum=jnp.array(loaded_state['momentum']),
+            force=jnp.array(loaded_state['force']),
+            mass=jnp.array(loaded_state['mass'])
         )
 
     elif ensemble.lower() == 'nvt':
         state = jax_md.simulate.NVTNoseHooverState(
-            position=loaded_state['position'],
-            momentum=loaded_state['momentum'],
-            force=loaded_state['force'],
-            mass=loaded_state['mass'],
+            position=jnp.array(loaded_state['position']),
+            momentum=jnp.array(loaded_state['momentum']),
+            force=jnp.array(loaded_state['force']),
+            mass=jnp.array(loaded_state['mass']),
             chain=jax_md.simulate.NoseHooverChain(
                 position=loaded_state['thermostat_position'],
                 momentum=loaded_state['thermostat_momentum'],
@@ -2265,10 +2265,10 @@ def load_state(
 
     elif ensemble.lower() == 'npt':
         state = jax_md.simulate.NPTNoseHooverState(
-            position=loaded_state['position'],
-            momentum=loaded_state['momentum'],
-            force=loaded_state['force'],
-            mass=loaded_state['mass'],
+            position=jnp.array(loaded_state['position']),
+            momentum=jnp.array(loaded_state['momentum']),
+            force=jnp.array(loaded_state['force']),
+            mass=jnp.array(loaded_state['mass']),
             reference_box=loaded_state['reference_box'],
             box_position=loaded_state['box_position'],
             box_momentum=loaded_state['box_momentum'],
