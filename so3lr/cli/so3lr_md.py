@@ -1673,7 +1673,12 @@ def perform_md(
         #Read pysages-settings
         set_dict = parse_pysages_input('./pysages_input.yaml')
         print(f'Parsed pysages settings: {set_dict}', flush=True)
-        method = get_pysages_method(set_dict) 
+        method = get_pysages_method(
+                set_dict, 
+                nbrs=nbrs, 
+                species=initial_geometry_dict['species'], 
+                box=box 
+                ) 
         if first_loop and not restart_pysages:
             #If this is a fresh so3lr run
             pysages_result = None

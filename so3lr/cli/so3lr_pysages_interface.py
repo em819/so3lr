@@ -240,7 +240,7 @@ def parse_pysages_input(input_path):
     print(f'Parsed settings for PySAGES : {settings_dict}')       
     return settings_dict
 
-def process_cv(cv_dict):
+def process_cv(cv_dict, nbrs=None, species=None, box=None):
     name = cv_dict['type']
     arguments = cv_dict
 
@@ -259,9 +259,20 @@ def process_cv(cv_dict):
     elif name_lower == 'asphericity':
         return pysages.colvars.Asphericity(indices=arguments['indices'])
     elif name_lower == 'acylindricity':
-        return pysages.colvars.Acylindricity(indices=argument['indices'])
+        return pysages.colvars.Acylindricity(indices=arguments['indices'])
     elif name_lower == 'shapeanisotropy':
-        return pysages.colvars.ShapeAnisotropy(indices=argument['indices'])
+        return pysages.colvars.ShapeAnisotropy(indices=arguments['indices'])
+    elif name_lower == 'coordinationnumber':
+        n_atoms = nbrs.reference_position.shape[0]
+        return pysages.colvars.coordinates.CoordinationNumber(
+                indices=[tuple(np.arange(0,n_atoms).tolist()), tuple(arguments['indices'])], 
+                nbrs=nbrs, 
+                species=species, 
+                box=box,
+                species_nn=arguments['species'],
+                cn_exponents=arguments['cn_exps'] if 'cn_exps' in arguments else None
+                )
+        #return pysages.colvars.coordinates.CoordinationNumber(indices=[tuple(indices_min), tuple(arguments['indices'])], nbrs=nbrs_min, species=species, box=box, max_neighbors=max_neighbors)
 
 def process_grid(cv_settings):
     grid_mins = [cv['grid_min'] for cv in cv_settings]
@@ -273,10 +284,10 @@ def process_grid(cv_settings):
 
 
 
-def get_pysages_method(settings_dict):
+def get_pysages_method(settings_dict, nbrs=None, species=None, box=None):
     """Process the parsed settings and return the enhanced sampling method object"""
     #First process the CVs
-    cvs = [process_cv(cv) for cv in settings_dict['cv']]
+    cvs = [process_cv(cv, nbrs=nbrs, species=species, box=box) for cv in settings_dict['cv']]
     #Then collect the grid information
     grid = process_grid(settings_dict['cv'])
 
