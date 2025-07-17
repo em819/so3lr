@@ -20,8 +20,7 @@ corresponding JAX installation via
 pip install --upgrade pip
 pip install "jax[cuda12]==0.5.3"
 ```
-> **Note**: SO3LR runs significantly faster on GPU, making it the preferred choice for large-scale simulations. More 
-details about JAX installation can be found [here](https://jax.readthedocs.io/en/latest/installation.html).
+> **Note**: SO3LR runs significantly faster on GPU, making it the preferred choice for large-scale simulations. More details about JAX installation can be found [here](https://jax.readthedocs.io/en/latest/installation.html). Also, we recommend installing with [uv](https://docs.astral.sh/uv/), it's magical.
 
 If you want to use SO3LR on CPU, e.g. for testing on your local machine which does not have a GPU, you can do
 ```shell script
@@ -110,7 +109,8 @@ The input can be any file that is digestible by [`ase.io.iread`](https://wiki.fy
 
 The command will collect and print metrics on the dataset and save the predictions to the specified output file. The predicted properties are `energy`, `forces`, `dipole_vec` and `hirshfeld_ratios`. Energy and forces are assumed to be present in the datafile, while dipole vectors and Hirshfeld ratios are optional. If they are not present in the data, the metrics will simply be `NaN`.
 
-> **Important**: SO3LR was not trained specifically on energies, so only relative energies are meaningful. Labels are assumed to be in `eV` and `Ångström`. 
+> [!IMPORTANT]
+> SO3LR was not trained on energies, so only relative energies are meaningful. Labels are assumed to be in `eV` and `Ångström`. For gas-phase simulations, we suggest using `--lr-cutoff 1000`.
 
 
 The predictions can be analyzed in Python:
@@ -135,6 +135,22 @@ For more in-depth evaluation using Python, check out the [example notebook](http
 
 The CLI, repository, and model are still developing. We would appreciate if you report any errors or incosistencies.
 
+## Dimer Binding Energy Calculations
+
+You can calculate binding energies with SO3LR as reported in the preprint (Fig. 2B). The binding energy is computed as the difference between the bound dimer and non-interacting monomers (separated by a distance larger than the long-range cutoff) with charges assigned for each monomer separately.
+
+For XYZ files with dimer metadata (`charge_a`, `charge_b`, `selection_a`, `selection_b`, like [NCIAtlas](https://github.com/Honza-R/NCIAtlas/blob/main/geometries/NCIA_D1200/1.01.01_100.xyz) format), generate original and translated structures:
+
+```shell script
+python so3lr/prepare_dimer_xyz.py --datafile data.xyz
+```
+
+Then evaluate energies (see [SAPT10k](https://doi.org/10.1063/5.0204064) dataset in examples/data):
+
+```shell script
+so3lr eval --datafile sapt10k.xyz --targets energy --save-to sapt10k_eval.xyz --lr-cutoff 1000
+```
+
 ## Atomic Simulation Environment
 To get an Atomic Simulation Environment (ASE) calculator with energies and forces predicted
 from SO3LR just do 
@@ -149,6 +165,7 @@ atoms.info['charge'] = 0.0
 
 calc = So3lrCalculator(
     calculate_stress=False,
+    lr_cutoff=1000, # for gas-phase systems
     dtype=np.float32
 )
 atoms.calc = calc

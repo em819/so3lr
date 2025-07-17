@@ -35,6 +35,9 @@ SO3LR_ASCII = """
 # Ignore FutureWarnings or warnings that do not affect the model's performance
 warnings.filterwarnings("ignore", message="scatter inputs have incompatible types")
 warnings.filterwarnings("ignore", message="Explicitly requested dtype.*truncated")
+warnings.filterwarnings("ignore", category=SyntaxWarning)
+warnings.filterwarnings("ignore", category=DeprecationWarning)
+
 
 def get_hardware_info():
     """Detect and print information about the computing hardware being used.
@@ -75,7 +78,7 @@ def get_hardware_info():
                 else:
                     mem_str = "unknown"
 
-                logger.info(f"Device {i}:                {device}")
+                logger.info(f"Device {i}:                  {device}")
                 logger.info(f"Memory usage:              {mem_str}")
             except:
                 logger.info(f"Device {i}:                {device}")
@@ -306,6 +309,16 @@ Evaluate SO3LR on a dataset with all options:
 # targets: "forces,dipole_vec,hirshfeld_ratios" # Targets to evaluate
 # jit_compile: true                            # Use JIT compilation for speed
 
+# # Experimental settings
+#
+# Ewald electrostatics settings
+# kspace_electrostatics: null                  # Whether to use Ewald summation for long-range electrostatics (null/"ewald"/"pme")
+# kspace_smearing: 4.0                         # Smearing width for Ewald summation
+# kspace_spacing: 2.0                          # Grid spacing for Ewald summation
+# kspace_interp_nodes: 4                       # Number of interpolation nodes for PME
+#
+# observables: ["partial_charges","dipole_vec","hirshfeld_ratios"]
+#
 # output_atom_indices: null                    # Optional list of atom indices to output
 # ```
 

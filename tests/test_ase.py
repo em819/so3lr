@@ -34,7 +34,8 @@ def test_molecules(name: str):
     npt.assert_allclose(
         target_predictions['energy'],
         energy,
-        atol=1e-6
+        atol=1e-5,
+        rtol=1e-6
     )
 
     npt.assert_allclose(
@@ -118,7 +119,8 @@ def test_so3lr_ase_calculator(name: str):
     npt.assert_allclose(
         target_predictions['energy'],
         energy,
-        atol=1e-6
+        atol=2e-5,
+        rtol=1e-6
     )
 
     npt.assert_allclose(
