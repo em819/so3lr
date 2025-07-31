@@ -314,6 +314,8 @@ def get_pysages_method(settings_dict, nbrs=None, species=None, box=None):
                 kB=units['temperature'], 
                 grid=grid,
                 restraints=restraints)
+    elif settings_dict['method'].lower() == 'unbiased':
+        return pysages.methods.Unbiased(cvs)
     else:
         #TODO implement the other methods
         pass

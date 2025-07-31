@@ -1778,6 +1778,7 @@ def perform_md(
             #If this is a fresh so3lr run
             pysages_result = None
         else:
+            print(f'Restartin from previous pysages run', flush=True)
             pysages_result = restart_data_pysages 
 
     while cycle_md < md_cycles:
