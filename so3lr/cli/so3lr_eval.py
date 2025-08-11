@@ -56,6 +56,7 @@ def process_predictions(
     graph_batch.nodes['hirshfeld_ratios_so3lr'] = output_prediction['hirshfeld_ratios']
     graph_batch.globals['energy_so3lr'] = output_prediction['energy']
     graph_batch.globals['dipole_vec_so3lr'] = output_prediction['dipole_vec']
+    graph_batch.nodes['c6_ratios_so3lr'] = output_prediction['c6_ratios']
 
     # Unbatch the graphs and filter out padding
     unbatched_graphs = unbatch_np(graph_batch)
@@ -432,6 +433,8 @@ def assign_mask(x: str, inputs: Dict[str, Any]) -> np.ndarray:
     elif x == 'dipole_vec':
         return graph_mask
     elif x == 'hirshfeld_ratios':
+        return node_mask
+    elif x == 'c6_ratios':
         return node_mask
     else:
         raise ValueError(f"Evaluation not implemented for target='{x}'.")
