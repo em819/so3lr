@@ -303,6 +303,8 @@ def get_pysages_method(settings_dict, nbrs=None, species=None, box=None):
     #Assemble method
     if settings_dict['method'].lower() == 'abf':
         return pysages.methods.ABF(cvs, grid, restraints=restraints)
+    elif settings_dict['method'].lower() == 'spectralabf':
+        return pysages.methods.SpectralABF(cvs, grid, restraints=restraints)
     elif settings_dict['method'].lower() == 'metad':
         return pysages.methods.Metadynamics(
                 cvs, 
