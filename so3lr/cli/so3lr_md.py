@@ -1916,8 +1916,9 @@ def perform_md(
                         restart_save_path,
                         ensemble=ensemble
                     )
-                    if do_enhanced_sampling:
-                        save_pysages_state(pysages_result, restart_pysages_save_path)
+                #Saving pysages state for restart
+                if do_enhanced_sampling and restart_pysages_save_path is not None:
+                    save_pysages_state(pysages_result, restart_pysages_save_path)
 
     logger.info('Results saved to: ' + output_file)
     average_time_per_step = total_time_for_steps / (cycle_md - 1)
