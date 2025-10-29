@@ -296,7 +296,8 @@ def get_pysages_method(settings_dict, nbrs=None, species=None, box=None):
 
     if 'restraints' in settings_dict:
         restraints_dict = settings_dict['restraints']
-        restraints = pysages.CVRestraints(lower=restraints_dict['lower'], upper=restraints_dict['upper'], kl=0, ku=0.1)
+        print(f'restraints : {restraints_dict}', flush=True)
+        restraints = pysages.CVRestraints(lower=restraints_dict['lower'], upper=restraints_dict['upper'], kl=restraints_dict['kl'], ku=restraints_dict['ku'])
     else:
         restraints=None
 
