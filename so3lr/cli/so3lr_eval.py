@@ -268,7 +268,8 @@ def evaluate_so3lr_on(
         data, stats = loader.load(
             cutoff=cutoff,
             cutoff_lr=lr_cutoff,
-            calculate_neighbors_lr=True if lr_cutoff is not None else False,
+            #calculate_neighbors_lr=True if lr_cutoff is not None else False,
+            calculate_neighbors_lr=False,
             pick_idx=np.arange(num_data)
         )
     except Exception as e:
@@ -278,7 +279,8 @@ def evaluate_so3lr_on(
     n_node = stats['max_num_of_nodes'] * batch_size + 1
     n_edge = stats['max_num_of_edges'] * batch_size + 1
     n_graph = batch_size + 1
-    n_pairs = stats['max_num_of_nodes'] * (stats['max_num_of_nodes'] - 1) * batch_size + 1
+    #n_pairs = stats['max_num_of_nodes'] * (stats['max_num_of_nodes'] - 1) * batch_size + 1
+    n_pairs=100
 
     logger.info(f"Batch size: n_node={n_node}, n_edge={n_edge}, n_graph={n_graph}, n_pairs={n_pairs}")
 

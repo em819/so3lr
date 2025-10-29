@@ -15,6 +15,7 @@ def jraph_to_ase_atoms(graph):
     """ Convert graph to ase.atoms object. """
 
     cell = graph.edges.get('cell')
+    cell = cell[0] if cell is not None else None
     pbc = graph.edges.get('pbc')
 
     positions = graph.nodes['positions']
