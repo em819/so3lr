@@ -14,12 +14,12 @@ from mlff.utils import jraph_utils, evaluation_utils
 from mlff.data import AseDataLoaderSparse
 from pathlib import Path
 import json
-from collections import defaultdict
 
 from ..jraph_utils import jraph_to_ase_atoms, unbatch_np
 from ..base_calculator import make_so3lr
 from .so3lr_md import load_model, setup_logger
 
+#import jax.debug as jdb
 # Get logger
 logger = logging.getLogger("SO3LR")
 
@@ -91,32 +91,20 @@ def calculate_metrics(
 
     for target in targets:
         mask = assign_mask(target, inputs=inputs)
-        y_pred = output_prediction[target]
-        y_true = inputs[target]
 
-        #mae = evaluation_utils.calculate_mae(
-        #    y_predicted=output_prediction[target],
-        #    y_true=inputs[target],
-        #    msk=mask
-        #)
-        #mse = evaluation_utils.calculate_mse(
-        #    y_predicted=output_prediction[target],
-        #    y_true=inputs[target],
-        #    msk=mask
-        #)
-        diff = jnp.asarray(y_pred) - jnp.asarray(y_true)
+        mae = evaluation_utils.calculate_mae(
+            y_predicted=output_prediction[target],
+            y_true=inputs[target],
+            msk=mask
+        )
+        mse = evaluation_utils.calculate_mse(
+            y_predicted=output_prediction[target],
+            y_true=inputs[target],
+            msk=mask
+        )
 
-        abs_sum = jnp.abs(diff[mask]).sum()
-        sq_sum  = (diff[mask] ** 2).sum()
-        count   = jnp.asarray(mask).sum()
-
-        #metrics[f"{target}_mae"] = mae
-        #metrics[f"{target}_mse"] = mse
-
-        # Store as Python scalars to avoid tracer issues later
-        metrics[f"{target}_abs_sum"] = float(abs_sum)
-        metrics[f"{target}_sq_sum"]  = float(sq_sum)
-        metrics[f"{target}_count"]   = int(count)
+        metrics[f"{target}_mae"] = mae
+        metrics[f"{target}_mse"] = mse
 
     return metrics
 
@@ -223,8 +211,7 @@ def evaluate_so3lr_on(
             raise RuntimeError(
                 f'Output file already exists: {save_to}')
 
-        #if save_to.suffix != '.xyz' and save_to.suffix != '.extxyz':
-        if save_to.suffix not in ('.xyz', '.extxyz'):
+        if save_to.suffix != '.xyz' and save_to.suffix != '.extxyz':
             raise ValueError(
                 f"Output file must have suffix `.xyz` or `.extxyz`. Received: {save_to.suffix}.")
 
@@ -280,7 +267,7 @@ def evaluate_so3lr_on(
     n_edge = stats['max_num_of_edges'] * batch_size + 1
     n_graph = batch_size + 1
     #n_pairs = stats['max_num_of_nodes'] * (stats['max_num_of_nodes'] - 1) * batch_size + 1
-    n_pairs=100
+    n_pairs =  100
 
     logger.info(f"Batch size: n_node={n_node}, n_edge={n_edge}, n_graph={n_graph}, n_pairs={n_pairs}")
 
@@ -293,6 +280,8 @@ def evaluate_so3lr_on(
         n_pairs=n_pairs
     )
 
+
+    #jdb.print('batched_graphs : {bg}',bg=data)
     # JIT compilation if requested
     if jit_compile:
         so3lr_calc = jax.jit(so3lr_calc)
@@ -323,14 +312,10 @@ def evaluate_so3lr_on(
         compile_time = np.nan
 
     # Create metric tracking dictionaries
-    #test_metrics = {}
-    #for t in target_list:
-    #    for m in ('mae', 'mse'):
-    #        test_metrics[f'{t}_{m}'] = []
-    # running totals for per-atom / per-structure aggregation
-    tot_abs = defaultdict(float)  # per target absolute-error sum
-    tot_sq  = defaultdict(float)  # per target squared-error sum
-    tot_n   = defaultdict(int)    # per target masked count
+    test_metrics = {}
+    for t in target_list:
+        for m in ('mae', 'mse'):
+            test_metrics[f'{t}_{m}'] = []
 
     i = 0
     total_time = 0.0
@@ -360,19 +345,10 @@ def evaluate_so3lr_on(
             total_time += end - start
 
             # Calculate metrics
-            #batch_metrics = calculate_metrics(
-            #    output_prediction, inputs, target_list)
-            #for key, value in batch_metrics.items():
-            #    test_metrics[key].append(value)
-
-            # Calculate batch metrics (sums & counts)
-            batch_metrics = calculate_metrics(output_prediction, inputs, target_list)
-
-            # Accumulate
-            for t in target_list:
-                tot_abs[t] += batch_metrics[f"{t}_abs_sum"]
-                tot_sq[t]  += batch_metrics[f"{t}_sq_sum"]
-                tot_n[t]   += batch_metrics[f"{t}_count"]
+            batch_metrics = calculate_metrics(
+                output_prediction, inputs, target_list)
+            for key, value in batch_metrics.items():
+                test_metrics[key].append(value)
 
             # Process predictions if saving is enabled
             if save_predictions_bool:
@@ -390,37 +366,22 @@ def evaluate_so3lr_on(
         logger.info('-' * 50)
 
         # Compute final metrics
-        #for key in list(test_metrics.keys()):
-        #    test_metrics[key] = np.mean(test_metrics[key])
+        for key in list(test_metrics.keys()):
+            test_metrics[key] = np.mean(test_metrics[key])
 
         # Calculate RMSE from MSE
-
-        # Compute final metrics from totals (global per-atom/per-structure)
-        test_metrics = {}
         for t in target_list:
-            #test_metrics[f'{t}_rmse'] = np.sqrt(test_metrics[f'{t}_mse'])
-            n = tot_n[t]
-            if n <= 0:
-                # Avoid division by zero; report NaNs if nothing was counted
-                mae = float('nan'); mse = float('nan'); rmse = float('nan')
-            else:
-                mae = tot_abs[t] / n
-                mse = tot_sq[t]  / n
-                rmse = float(np.sqrt(mse))
-            test_metrics[f'{t}_mae']  = float(mae)
-            test_metrics[f'{t}_mse']  = float(mse)
-            test_metrics[f'{t}_rmse'] = float(rmse)
-
+            test_metrics[f'{t}_rmse'] = np.sqrt(test_metrics[f'{t}_mse'])
 
         # Compile timing metrics
         time_per_batch = total_time / i if i > 0 else 0
         time_per_structure = total_time / total_num_structures if total_num_structures > 0 else 0
 
         metrics = {
-            'time_per_batch': float(time_per_batch),
-            'time_per_structure': float(time_per_structure),
-            'time_evaluation': float(total_time),
-            'time_compile': float(compile_time),
+            'time_per_batch': time_per_batch,
+            'time_per_structure': time_per_structure,
+            'time_evaluation': total_time,
+            'time_compile': compile_time,
             **test_metrics
         }
 
