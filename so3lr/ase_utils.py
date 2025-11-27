@@ -1,7 +1,9 @@
 import numpy as np
 import pathlib
+from typing import Dict
 
 from mlff.md import mlffCalculatorSparse
+from typing import Any, Dict
 
 
 def make_ase_calculator(
@@ -9,17 +11,30 @@ def make_ase_calculator(
         dispersion_energy_cutoff_lr_damping=2.,
         calculate_stress=False,
         dtype=np.float32,
+        lr_neighbors_bool=True,
+        obs_fn_kwargs: Dict[str, Dict[str, int]] = {},
+        has_aux=False,
+        workdir= None,
         **kwargs
 ):
     package_dir = pathlib.Path(__file__).parent.parent.resolve()
 
+    if workdir == None:
+        package_dir = pathlib.Path(__file__).parent.parent.resolve()
+        workdir=package_dir / 'so3lr' / 'params'
+
     calc = mlffCalculatorSparse.create_from_ckpt_dir(
-        ckpt_dir=package_dir / 'so3lr' / 'params',
+        #ckpt_dir=package_dir / 'so3lr' / 'params',
+        ckpt_dir=workdir,
         lr_cutoff=lr_cutoff,
         dispersion_energy_cutoff_lr_damping=dispersion_energy_cutoff_lr_damping,
-        from_file=True,
+        from_file=False,
+        #from_file=True,
         calculate_stress=calculate_stress,
         dtype=dtype,
+        lr_neighbors_bool=lr_neighbors_bool,
+        obs_fn_kwargs=obs_fn_kwargs,
+        has_aux=has_aux,
         **kwargs
     )
 
