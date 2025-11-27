@@ -19,6 +19,7 @@ from ..jraph_utils import jraph_to_ase_atoms, unbatch_np
 from ..base_calculator import make_so3lr
 from .so3lr_md import load_model, setup_logger
 
+#import jax.debug as jdb
 # Get logger
 logger = logging.getLogger("SO3LR")
 
@@ -254,7 +255,8 @@ def evaluate_so3lr_on(
         data, stats = loader.load(
             cutoff=cutoff,
             cutoff_lr=lr_cutoff,
-            calculate_neighbors_lr=True if lr_cutoff is not None else False,
+            #calculate_neighbors_lr=True if lr_cutoff is not None else False,
+            calculate_neighbors_lr=False,
             pick_idx=np.arange(num_data)
         )
     except Exception as e:
@@ -264,7 +266,8 @@ def evaluate_so3lr_on(
     n_node = stats['max_num_of_nodes'] * batch_size + 1
     n_edge = stats['max_num_of_edges'] * batch_size + 1
     n_graph = batch_size + 1
-    n_pairs = stats['max_num_of_nodes'] * (stats['max_num_of_nodes'] - 1) * batch_size + 1
+    #n_pairs = stats['max_num_of_nodes'] * (stats['max_num_of_nodes'] - 1) * batch_size + 1
+    n_pairs =  100
 
     logger.info(f"Batch size: n_node={n_node}, n_edge={n_edge}, n_graph={n_graph}, n_pairs={n_pairs}")
 
@@ -277,6 +280,8 @@ def evaluate_so3lr_on(
         n_pairs=n_pairs
     )
 
+
+    #jdb.print('batched_graphs : {bg}',bg=data)
     # JIT compilation if requested
     if jit_compile:
         so3lr_calc = jax.jit(so3lr_calc)

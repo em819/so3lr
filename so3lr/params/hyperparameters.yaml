@@ -123,7 +123,7 @@ data:
   energy_unit: eV
   filepath: /project/home/p200243/kabylda/datasets/universal_datasets/universal_long_aug.xyz
   length_unit: Angstrom
-  neighbors_lr_bool: true
+  neighbors_lr_bool: false
   neighbors_lr_cutoff: 100.
   shift_mode: mean
   split_seed: 7
