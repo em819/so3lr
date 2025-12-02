@@ -28,6 +28,7 @@ def jraph_to_ase_atoms(graph):
         pbc=pbc
     )
 
+    atoms.info['multiplicity'] = int(graph.globals["num_unpaired_electrons"] + 1)
     atoms.info['charge'] = int(graph.globals["total_charge"])
     atoms.info['energy'] = float(f'{float(graph.globals["energy"][0]):.6g}')
     atoms.info['energy_so3lr'] = float(f'{float(graph.globals["energy_so3lr"][0]):.6g}')
