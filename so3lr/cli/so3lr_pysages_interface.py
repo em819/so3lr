@@ -248,6 +248,8 @@ def process_cv(cv_dict, nbrs=None, species=None, box=None):
     if name_lower == 'distance':
         #print(f'Grp 1: {tuple(arguments['grp1'])}, Grp 2: {tuple(arguments['grp2'])}')
         return pysages.colvars.Distance(indices=[tuple(arguments['grp1']), tuple(arguments['grp2'])])
+    elif name_lower == 'differenceofdistances':
+        return pysages.colvars.DifferenceOfDistances(indices=arguments['indices'])
     elif name_lower == 'angle':
         return pysages.colvars.Angle(indices=arguments['indices'])
     elif name_lower == 'dihedral':
